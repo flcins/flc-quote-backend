@@ -19,6 +19,7 @@ app.post('/api/get-quote', async (req, res) => {
   }
 
   const dob = applicants[0].dob;
+
   const query = new URLSearchParams({
     zip,
     household_income: income,
@@ -31,7 +32,9 @@ app.post('/api/get-quote', async (req, res) => {
     path: `/api/v1/plans/search?${query}`,
     method: 'GET',
     headers: {
-      'api_key': API_KEY
+      'api_key': API_KEY,                          // ✅ CMS-required key
+      'Host': 'marketplace.api.healthcare.gov',   // ✅ CMS sometimes requires this
+      'Content-Type': 'application/json'          // ✅ Also expected
     }
   };
 
@@ -45,7 +48,7 @@ app.post('/api/get-quote', async (req, res) => {
     response.on('end', () => {
       try {
         const result = JSON.parse(data);
-        console.log("📦 Raw CMS Response:", JSON.stringify(result, null, 2)); // <-- NEW LINE
+        console.log("📦 Raw CMS Response:", JSON.stringify(result, null, 2)); // <-- Shows full CMS response
 
         const plans = result?.plans?.map(plan => ({
           name: plan.plan_name,
