@@ -10,28 +10,29 @@ app.use(cors());
 app.use(express.json());
 
 app.post('/api/get-quote', async (req, res) => {
-  const user = req.body;
+  const { zip, income, householdSize, applicants } = req.body;
 
-  console.log("✅ Incoming Form Data:", user);
+  console.log("✅ Received request:", req.body);
+
+  if (!zip || !income || !householdSize || !applicants?.length) {
+    return res.status(400).json({ message: "Missing required fields." });
+  }
+
+  // Use primary applicant’s DOB
+  const dob = applicants[0].dob;
 
   try {
-    if (!user.zip || !user.dob || !user.income || !user.totalPeople) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
-
     const response = await axios.get('https://marketplace.api.healthcare.gov/api/v1/plans/search', {
       headers: {
         'Authorization': `API-Key ${API_KEY}`
       },
       params: {
-        zip: user.zip,
-        household_income: user.income,
-        dob: user.dob,
-        household_size: user.totalPeople
+        zip,
+        household_income: income,
+        dob,
+        household_size: householdSize
       }
     });
-
-    console.log("✅ CMS API Response:", response.data);
 
     const plans = response.data?.plans?.map(plan => ({
       name: plan.plan_name,
@@ -40,13 +41,15 @@ app.post('/api/get-quote', async (req, res) => {
       carrier: plan.issuer_name
     })) || [];
 
+    console.log("✅ CMS Plans returned:", plans.length);
+
     res.json(plans);
   } catch (error) {
-    console.error("❌ Error from CMS API:", error.response?.data || error.message);
-    res.status(500).json({ message: "CMS API failed", details: error.response?.data || error.message });
+    console.error("❌ CMS API Error:", error.response?.data || error.message);
+    res.status(500).json({ message: "CMS API failed", error: error.response?.data || error.message });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ Server is running on port ${PORT}`);
 });
