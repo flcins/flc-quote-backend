@@ -21,16 +21,22 @@ app.post('/api/get-quote', async (req, res) => {
   const dob = applicants[0].dob;
 
   try {
-    const response = await axios.get('https://marketplace.api.healthcare.gov/api/v1/plans/search', {
+    const response = await axios.request({
+      method: 'GET',
+      url: 'https://marketplace.api.healthcare.gov/api/v1/plans/search',
       headers: {
-        'api_key': API_KEY  // ✅ Correct header name for CMS API
+        'api_key': API_KEY // lowercased and untouched
       },
       params: {
         zip,
         household_income: income,
         dob,
         household_size: householdSize
-      }
+      },
+      transformRequest: [(data, headers) => {
+        // Prevent Axios from auto-transforming header keys
+        return data;
+      }]
     });
 
     const plans = response.data?.plans?.map(plan => ({
