@@ -12,7 +12,13 @@ app.use(express.json());
 app.post('/api/get-quote', async (req, res) => {
   const user = req.body;
 
+  console.log("✅ Incoming Form Data:", user);
+
   try {
+    if (!user.zip || !user.dob || !user.income || !user.totalPeople) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
     const response = await axios.get('https://marketplace.api.healthcare.gov/api/v1/plans/search', {
       headers: {
         'Authorization': `API-Key ${API_KEY}`
@@ -25,6 +31,8 @@ app.post('/api/get-quote', async (req, res) => {
       }
     });
 
+    console.log("✅ CMS API Response:", response.data);
+
     const plans = response.data?.plans?.map(plan => ({
       name: plan.plan_name,
       premium: plan.monthly_premium,
@@ -34,11 +42,11 @@ app.post('/api/get-quote', async (req, res) => {
 
     res.json(plans);
   } catch (error) {
-    console.error('Error calling CMS API:', error.response?.data || error.message);
-    res.status(500).json({ message: 'Failed to fetch plans' });
+    console.error("❌ Error from CMS API:", error.response?.data || error.message);
+    res.status(500).json({ message: "CMS API failed", details: error.response?.data || error.message });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
