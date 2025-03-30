@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const axios = require('axios');
+const https = require('https');
 const app = express();
 const PORT = process.env.PORT || 4000;
 
@@ -19,43 +19,54 @@ app.post('/api/get-quote', async (req, res) => {
   }
 
   const dob = applicants[0].dob;
+  const query = new URLSearchParams({
+    zip,
+    household_income: income,
+    dob,
+    household_size: householdSize
+  }).toString();
 
-  try {
-    const response = await axios.request({
-      method: 'GET',
-      url: 'https://marketplace.api.healthcare.gov/api/v1/plans/search',
-      headers: {
-        'api_key': API_KEY // lowercased and untouched
-      },
-      params: {
-        zip,
-        household_income: income,
-        dob,
-        household_size: householdSize
-      },
-      transformRequest: [(data, headers) => {
-        // Prevent Axios from auto-transforming header keys
-        return data;
-      }]
+  const options = {
+    hostname: 'marketplace.api.healthcare.gov',
+    path: `/api/v1/plans/search?${query}`,
+    method: 'GET',
+    headers: {
+      'api_key': API_KEY
+    }
+  };
+
+  const request = https.request(options, (response) => {
+    let data = '';
+
+    response.on('data', (chunk) => {
+      data += chunk;
     });
 
-    const plans = response.data?.plans?.map(plan => ({
-      name: plan.plan_name,
-      premium: plan.monthly_premium,
-      deductible: plan.deductible,
-      carrier: plan.issuer_name
-    })) || [];
+    response.on('end', () => {
+      try {
+        const result = JSON.parse(data);
+        const plans = result?.plans?.map(plan => ({
+          name: plan.plan_name,
+          premium: plan.monthly_premium,
+          deductible: plan.deductible,
+          carrier: plan.issuer_name
+        })) || [];
 
-    console.log(`✅ CMS Plans returned: ${plans.length}`);
-    res.json(plans);
-
-  } catch (error) {
-    console.error("❌ CMS API Error:", error.response?.data || error.message);
-    res.status(500).json({
-      message: "CMS API failed",
-      error: error.response?.data || error.message
+        console.log(`✅ CMS Plans returned: ${plans.length}`);
+        res.json(plans);
+      } catch (err) {
+        console.error('❌ JSON Parsing Error:', err.message);
+        res.status(500).json({ message: 'Error parsing CMS response' });
+      }
     });
-  }
+  });
+
+  request.on('error', (error) => {
+    console.error('❌ HTTPS Request Error:', error.message);
+    res.status(500).json({ message: 'CMS API request failed', error: error.message });
+  });
+
+  request.end();
 });
 
 app.listen(PORT, () => {
