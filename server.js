@@ -5,7 +5,7 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 const API_KEY = process.env.CMS_API_KEY;
-console.log("🔐 Loaded CMS API Key:", API_KEY ? "✅ Exists" : "❌ Missing");
+
 app.use(cors());
 app.use(express.json());
 
@@ -18,13 +18,12 @@ app.post('/api/get-quote', async (req, res) => {
     return res.status(400).json({ message: "Missing required fields." });
   }
 
-  // Use primary applicant’s DOB
   const dob = applicants[0].dob;
 
   try {
     const response = await axios.get('https://marketplace.api.healthcare.gov/api/v1/plans/search', {
       headers: {
-        'Authorization': `API-Key ${API_KEY}`
+        'api_key': API_KEY  // ✅ Correct header name for CMS API
       },
       params: {
         zip,
@@ -41,15 +40,19 @@ app.post('/api/get-quote', async (req, res) => {
       carrier: plan.issuer_name
     })) || [];
 
-    console.log("✅ CMS Plans returned:", plans.length);
-
+    console.log(`✅ CMS Plans returned: ${plans.length}`);
     res.json(plans);
+
   } catch (error) {
     console.error("❌ CMS API Error:", error.response?.data || error.message);
-    res.status(500).json({ message: "CMS API failed", error: error.response?.data || error.message });
+    res.status(500).json({
+      message: "CMS API failed",
+      error: error.response?.data || error.message
+    });
   }
 });
 
 app.listen(PORT, () => {
+  console.log("🔐 Loaded CMS API Key:", API_KEY ? "✅ Exists" : "❌ Missing");
   console.log(`✅ Server is running on port ${PORT}`);
 });
