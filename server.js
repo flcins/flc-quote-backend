@@ -45,6 +45,8 @@ app.post('/api/get-quote', async (req, res) => {
     response.on('end', () => {
       try {
         const result = JSON.parse(data);
+        console.log("📦 Raw CMS Response:", JSON.stringify(result, null, 2)); // <-- NEW LINE
+
         const plans = result?.plans?.map(plan => ({
           name: plan.plan_name,
           premium: plan.monthly_premium,
@@ -56,7 +58,7 @@ app.post('/api/get-quote', async (req, res) => {
         res.json(plans);
       } catch (err) {
         console.error('❌ JSON Parsing Error:', err.message);
-        res.status(500).json({ message: 'Error parsing CMS response' });
+        res.status(500).json({ message: 'Error parsing CMS response', data });
       }
     });
   });
