@@ -5,7 +5,7 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 const API_KEY = process.env.CMS_API_KEY;
-
+console.log("🔐 Loaded CMS API Key:", API_KEY ? "✅ Exists" : "❌ Missing");
 app.use(cors());
 app.use(express.json());
 
