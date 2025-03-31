@@ -1,80 +1,61 @@
 const express = require('express');
+const axios = require('axios');
 const cors = require('cors');
-const https = require('https');
+
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 3000;
 
-const API_KEY = process.env.CMS_API_KEY;
-
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-app.post('/api/get-quote', async (req, res) => {
-  const { zip, income, householdSize, applicants } = req.body;
+// Your CMS Marketplace API key
+const CMS_API_KEY = "WVXgQwss2zQpmYITlQ4tzP9LQKtmzNA5";
 
-  console.log("✅ Received request:", req.body);
+// Main route to get ACA plans
+app.post('/get-plans', async (req, res) => {
+  const { zip, dob, gender, tobacco } = req.body;
 
-  if (!zip || !income || !householdSize || !applicants?.length) {
-    return res.status(400).json({ message: "Missing required fields." });
-  }
+  try {
+    const age = getAge(new Date(dob));
+    const year = 2025; // You can dynamically set this if needed
 
-  const dob = applicants[0].dob;
+    const apiUrl = `https://api.marketplace.cms.gov/marketplace-insurance-plans/v4/plans?zipCode=${zip}&marketplace=FFM&year=${year}`;
 
-  const query = new URLSearchParams({
-    zip,
-    household_income: income,
-    dob,
-    household_size: householdSize
-  }).toString();
-
-  const options = {
-    hostname: 'marketplace.api.healthcare.gov',
-    path: `/api/v1/plans/search?${query}`,
-    method: 'GET',
-    headers: {
-      'api_key': API_KEY,                          // ✅ CMS-required key
-      'Host': 'marketplace.api.healthcare.gov',   // ✅ CMS sometimes requires this
-      'Content-Type': 'application/json'          // ✅ Also expected
-    }
-  };
-
-  const request = https.request(options, (response) => {
-    let data = '';
-
-    response.on('data', (chunk) => {
-      data += chunk;
-    });
-
-    response.on('end', () => {
-      try {
-        const result = JSON.parse(data);
-        console.log("📦 Raw CMS Response:", JSON.stringify(result, null, 2)); // <-- Shows full CMS response
-
-        const plans = result?.plans?.map(plan => ({
-          name: plan.plan_name,
-          premium: plan.monthly_premium,
-          deductible: plan.deductible,
-          carrier: plan.issuer_name
-        })) || [];
-
-        console.log(`✅ CMS Plans returned: ${plans.length}`);
-        res.json(plans);
-      } catch (err) {
-        console.error('❌ JSON Parsing Error:', err.message);
-        res.status(500).json({ message: 'Error parsing CMS response', data });
+    const response = await axios.get(apiUrl, {
+      headers: {
+        'Accept': 'application/json',
+        'apikey': CMS_API_KEY
       }
     });
-  });
 
-  request.on('error', (error) => {
-    console.error('❌ HTTPS Request Error:', error.message);
-    res.status(500).json({ message: 'CMS API request failed', error: error.message });
-  });
+    const plans = response.data.plans.map(plan => ({
+      name: plan.marketingName,
+      premium: plan.individualMonthlyPremium,
+      issuer: plan.issuerName,
+      metalLevel: plan.metalLevel,
+      planType: plan.planType
+    }));
 
-  request.end();
+    res.status(200).json(plans);
+  } catch (error) {
+    console.error("Error fetching plans:", error.message);
+    res.status(500).json({ error: "Failed to fetch plans" });
+  }
 });
 
+// Helper to calculate age from DOB
+function getAge(dob) {
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+    age--;
+  }
+  return age;
+}
+
+// Start server
 app.listen(PORT, () => {
-  console.log("🔐 Loaded CMS API Key:", API_KEY ? "✅ Exists" : "❌ Missing");
-  console.log(`✅ Server is running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
