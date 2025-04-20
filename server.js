@@ -54,7 +54,7 @@ app.post('/get-plans', async (req, res) => {
     });
 
     // 2. Fetch ACA Plans from CMS Marketplace API
-    const cmsResponse = await fetch('https://api.healthcare.gov/v1/plans/search', {
+    const cmsResponse = await fetch('https://sandbox.healthcare.gov/api/v1/plans/search', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
