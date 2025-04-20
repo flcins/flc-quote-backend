@@ -1,19 +1,20 @@
 {
   "name": "flc-quote-backend",
   "version": "1.0.0",
-  "description": "Backend for FLC Insurance Instant Quote Tool",
+  "description": "Backend server for FLC Insurance quote form, with PDF summary generation.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
+    "body-parser": "^1.20.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.0.3",
     "express": "^4.18.2",
-    "nodemailer": "^6.9.8"
+    "nodemailer": "^6.9.4",
+    "pdfkit": "^0.13.0"
   },
   "engines": {
-    "node": "22.2.0"
+    "node": "18.x"
   },
   "author": "FLC Insurance",
   "license": "ISC"
