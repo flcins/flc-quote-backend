@@ -3,25 +3,19 @@
 const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
-const fetch = require('node-fetch');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Your SMTP2GO credentials (saved in Render environment variables)
+// Environment variables from Render
 const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASS = process.env.SMTP_PASS;
-
-// Your CMS Marketplace API Key
-const CMS_API_KEY = 'WVXgQwss2zQpmYITlQ4tzP9LQKtmzNA5';
-
-// Your destination email (where you want quote requests sent)
 const ADMIN_EMAIL = 'admin@flcins.com';
 
 app.use(cors());
 app.use(express.json());
 
-// Setup Nodemailer transporter with SMTP2GO
+// Configure Nodemailer with SMTP2GO
 const transporter = nodemailer.createTransport({
   host: 'mail.smtp2go.com',
   port: 2525,
@@ -31,12 +25,12 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// POST endpoint to receive form submission and return plans
+// POST endpoint to receive quote request and send mock plans
 app.post('/get-plans', async (req, res) => {
   const { zip, dob, gender, tobacco, firstName, lastName, email, phone } = req.body;
 
   try {
-    // 1. Send an email notification
+    // Send notification email to admin
     await transporter.sendMail({
       from: '"FLC Insurance Quotes" <admin@flcins.com>',
       to: ADMIN_EMAIL,
@@ -53,34 +47,45 @@ app.post('/get-plans', async (req, res) => {
       `
     });
 
-    // 2. Fetch ACA Plans from CMS Marketplace API
-    const cmsResponse = await fetch('https://sandbox.healthcare.gov/api/v1/plans/search', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${CMS_API_KEY}`
+    // Instead of calling CMS, just return full mock plans
+    const plans = [
+      {
+        planName: 'Silver 5 Advanced',
+        carrier: 'Aetna CVS Health',
+        estimatedMonthlyPremium: 75.45,
+        annualDeductibleIndividual: 0.00,
+        annualDeductibleFamily: 0.00,
+        outOfPocketLimitIndividual: 1695,
+        outOfPocketLimitFamily: 3300,
+        genericPrescriptions: 0.00,
+        planType: 'HMO',
+        coverageLevel: 'Silver'
       },
-      body: JSON.stringify({
-        zip_code: zip,
-        dob: dob,
-        gender: gender,
-        tobacco_use: tobacco
-      })
-    });
-
-    if (!cmsResponse.ok) {
-      throw new Error('Error fetching plans from CMS API.');
-    }
-
-    const cmsData = await cmsResponse.json();
-
-    // Format plans to send back to the frontend
-    const plans = cmsData.plans.map(plan => ({
-      name: plan.plan_name,
-      premium: plan.monthly_premium,
-      carrier: plan.issuer_name,
-      metalLevel: plan.metal_level
-    }));
+      {
+        planName: 'Silver 203',
+        carrier: 'Ambetter from Sunshine Health',
+        estimatedMonthlyPremium: 7.01,
+        annualDeductibleIndividual: 0.00,
+        annualDeductibleFamily: 0.00,
+        outOfPocketLimitIndividual: 1250,
+        outOfPocketLimitFamily: 2500,
+        genericPrescriptions: 1.00,
+        planType: 'EPO',
+        coverageLevel: 'Silver'
+      },
+      {
+        planName: 'UHC Silver-X Copay Focus',
+        carrier: 'UnitedHealthcare',
+        estimatedMonthlyPremium: 55.30,
+        annualDeductibleIndividual: 0.00,
+        annualDeductibleFamily: 0.00,
+        outOfPocketLimitIndividual: 1600,
+        outOfPocketLimitFamily: 3200,
+        genericPrescriptions: 0.00,
+        planType: 'HMO',
+        coverageLevel: 'Silver'
+      }
+    ];
 
     res.json(plans);
 
@@ -90,7 +95,7 @@ app.post('/get-plans', async (req, res) => {
   }
 });
 
-// Start the Express server
+// Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
